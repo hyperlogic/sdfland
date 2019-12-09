@@ -159,11 +159,8 @@ int main(int argc, char *argv[]) {
     texture->SetSWrap(GL_CLAMP_TO_EDGE);
     texture->SetTWrap(GL_CLAMP_TO_EDGE);
     texture->Create(scene->GetWidth(), scene->GetHeight());
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, scene->GetWidth(), scene->GetHeight(), 0, GL_RED, GL_FLOAT, scene->GetBuffer());
 
-    const int INTERNAL_FORMAT = GL_LUMINANCE;
-    const int PIXEL_FORMAT = GL_LUMINANCE;
-    glTexImage2D(GL_TEXTURE_2D, 0, INTERNAL_FORMAT, scene->GetWidth(), scene->GetHeight(),
-                 0, PIXEL_FORMAT, GL_UNSIGNED_BYTE, scene->GetTextureBuffer());
 
     while (!quitting) {
         SDL_Event event;
