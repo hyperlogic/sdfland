@@ -2,10 +2,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
 
 #define _USE_MATH_DEFINES // for C++
-#include <cmath>
+#include <math.h>
 
 
 // Convert from degrees to radians

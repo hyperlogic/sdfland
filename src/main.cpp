@@ -9,6 +9,7 @@
 #include "render/image.h"
 #include "render/texture.h"
 #include "render/program.h"
+#include "sdfscene.h"
 
 static bool quitting = false;
 static float r = 0.0f;
@@ -22,13 +23,18 @@ static int WINDOW_WIDTH = 512;
 static Program* program = NULL;
 static int colorLoc = -1;
 static int modelViewProjMatLoc = -1;
+static int sdfTextureLoc = -1;
 static int positionLoc = -1;
+static int uvLoc = -1;
+static Texture* texture = NULL;
+
+static SDFScene* scene = NULL;
 
 void render() {
     SDL_GL_MakeCurrent(window, gl_context);
     r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 
-    glClearColor(r, 0.4f, 0.1f, 1.0f);
+    glClearColor(r, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
     glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
@@ -41,15 +47,27 @@ void render() {
     glUniform4fv(colorLoc, 1, (float*)&color);
 
     // uniform mat4 modelViewProjMat;
-    Matrixf modelViewProjMat = Matrixf::Ortho(-0.2f, 1.2f, -0.2f, 1.2f, -10.0f, 10.0f);
+    Matrixf modelViewProjMat = Matrixf::Ortho(-0.0f, 1.0f, -0.0f, 1.0f, -10.0f, 10.0f);
     glUniformMatrix4fv(modelViewProjMatLoc, 1, GL_FALSE, (float*)&modelViewProjMat);
+
+    // uniform sampler2D sdfTexture;
+    int unit = program->GetTextureUnit(sdfTextureLoc);
+    glUniform1i(sdfTextureLoc, unit);
+    texture->Apply(unit);
 
     // attribute vec3 position;
     const size_t NUM_POSITIONS = 4;
     Vector3f positions[NUM_POSITIONS] = { Vector3f(0.0f, 0.0f, 0.0f), Vector3f(1.0f, 0.0f, 0.0f), Vector3f(1.0, 1.0f, 0.0f), Vector3f(0.0f, 1.0f, 0.0f) };
-    const size_t NUM_COMPONENTS = 3; // vec3
-    glVertexAttribPointer(positionLoc, NUM_COMPONENTS, GL_FLOAT, GL_FALSE, 0, positions);
+    const size_t NUM_VEC3_COMPONENTS = 3; // vec3
+    glVertexAttribPointer(positionLoc, NUM_VEC3_COMPONENTS, GL_FLOAT, GL_FALSE, 0, positions);
     glEnableVertexAttribArray(positionLoc);
+
+    // attribute vec2 uv;
+    const size_t NUM_UVS = 4;
+    Vector2f uvs[NUM_UVS] = { Vector2f(0.0f, 0.0f), Vector2f(1.0f, 0.0f), Vector2f(1.0, 1.0f), Vector2f(0.0f, 1.0f) };
+    const size_t NUM_VEC2_COMPONENTS = 2; // vec2
+    glVertexAttribPointer(uvLoc, NUM_VEC2_COMPONENTS, GL_FLOAT, GL_FALSE, 0, uvs);
+    glEnableVertexAttribArray(uvLoc);
 
     // indices
     const size_t NUM_INDICES = 6;
@@ -95,13 +113,11 @@ int main(int argc, char *argv[]) {
     RenderInit();
 
     program = new Program();
-    program->AddSourceFile(GL_VERTEX_SHADER, "C:\\msys64\\home\\ajthy\\code\\sdfland\\src\\shader\\fullbright_vert.glsl");
-    program->AddSourceFile(GL_FRAGMENT_SHADER, "C:\\msys64\\home\\ajthy\\code\\sdfland\\src\\shader\\fullbright_frag.glsl");
+    program->AddSourceFile(GL_VERTEX_SHADER, "C:\\msys64\\home\\ajthy\\code\\sdfland\\src\\shader\\sdf2d_vert.glsl");
+    program->AddSourceFile(GL_FRAGMENT_SHADER, "C:\\msys64\\home\\ajthy\\code\\sdfland\\src\\shader\\sdf2d_frag.glsl");
     if (!program->Link()) {
         SDL_Log("Error link failure: %s\n", glewGetErrorString(err));
         exit(-1);
-    } else {
-        SDL_Log("Error link success\n");
     }
 
     // lookup and cache uniform and attrib locations.
@@ -117,11 +133,37 @@ int main(int argc, char *argv[]) {
         exit(-1);
     }
 
+    sdfTextureLoc = program->GetUniformLocation("sdfTexture");
+    if (sdfTextureLoc < 0) {
+        SDL_Log("Error finding sdfTextureLoc uniform\n");
+        exit(-1);
+    }
+
     positionLoc = program->GetAttribLocation("position");
     if (positionLoc < 0) {
         SDL_Log("Error finding position attribute\n");
         exit(-1);
     }
+
+    uvLoc = program->GetAttribLocation("uv");
+    if (uvLoc < 0) {
+        SDL_Log("Error finding uv attribute\n");
+        exit(-1);
+    }
+
+    scene = new SDFScene();
+
+    texture = new Texture();
+    texture->SetMinFilter(GL_LINEAR);
+    texture->SetMagFilter(GL_LINEAR);
+    texture->SetSWrap(GL_CLAMP_TO_EDGE);
+    texture->SetTWrap(GL_CLAMP_TO_EDGE);
+    texture->Create(scene->GetWidth(), scene->GetHeight());
+
+    const int INTERNAL_FORMAT = GL_LUMINANCE;
+    const int PIXEL_FORMAT = GL_LUMINANCE;
+    glTexImage2D(GL_TEXTURE_2D, 0, INTERNAL_FORMAT, scene->GetWidth(), scene->GetHeight(),
+                 0, PIXEL_FORMAT, GL_UNSIGNED_BYTE, scene->GetTextureBuffer());
 
     while (!quitting) {
         SDL_Event event;

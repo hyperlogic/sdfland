@@ -126,6 +126,7 @@
     <ClCompile Include="..\..\src\render\program.cpp" />
     <ClCompile Include="..\..\src\render\render.cpp" />
     <ClCompile Include="..\..\src\render\texture.cpp" />
+    <ClCompile Include="..\..\src\sdfscene.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\abaci.h" />
@@ -133,6 +134,7 @@
     <ClInclude Include="..\..\src\render\program.h" />
     <ClInclude Include="..\..\src\render\render.h" />
     <ClInclude Include="..\..\src\render\texture.h" />
+    <ClInclude Include="..\..\src\sdfscene.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

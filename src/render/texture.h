@@ -49,11 +49,11 @@ public:
 
     const std::string& GetFilename() const { return m_filename; }
 
-protected:
-
     // gen, bind & tex param, but no glTexImage2D()
     void Create(int width, int height);
     void Apply(int unit);
+
+protected:
 
     GLuint m_texture;
     GLint m_minFilter;
