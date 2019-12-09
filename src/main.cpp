@@ -20,6 +20,9 @@ static int WINDOW_HEIGHT = 512;
 static int WINDOW_WIDTH = 512;
 
 static Program* program = NULL;
+static int colorLoc = -1;
+static int modelViewProjMatLoc = -1;
+static int positionLoc = -1;
 
 void render() {
     SDL_GL_MakeCurrent(window, gl_context);
@@ -34,43 +37,36 @@ void render() {
     program->Apply();
 
     // uniform vec4 color;
-    Vector4f color(1.0f, 0.0f, 0.0f, 1.0f);
-    int loc = program->GetUniformLocation("color");
-    glUniform4fv(loc, 1, (float*)&color);
+    Vector4f color(1.0f, 1.0f, 1.0f, 1.0f);
+    glUniform4fv(colorLoc, 1, (float*)&color);
 
     // uniform mat4 modelViewProjMat;
     Matrixf modelViewProjMat = Matrixf::Ortho(-0.2f, 1.2f, -0.2f, 1.2f, -10.0f, 10.0f);
-    loc = program->GetUniformLocation("modelViewProjMat");
-    glUniformMatrix4fv(loc, 1, GL_FALSE, (float*)&modelViewProjMat);
+    glUniformMatrix4fv(modelViewProjMatLoc, 1, GL_FALSE, (float*)&modelViewProjMat);
 
     // attribute vec3 position;
-    loc = program->GetAttribLocation("position");
-    const size_t NUM_POSITIONS = 3;
-    Vector3f positions[NUM_POSITIONS] = { Vector3f(0.0f, 0.0f, 0.0f), Vector3f(1.0f, 0.0f, 0.0f), Vector3f(1.0, 1.0f, 0.0f) };
+    const size_t NUM_POSITIONS = 4;
+    Vector3f positions[NUM_POSITIONS] = { Vector3f(0.0f, 0.0f, 0.0f), Vector3f(1.0f, 0.0f, 0.0f), Vector3f(1.0, 1.0f, 0.0f), Vector3f(0.0f, 1.0f, 0.0f) };
     const size_t NUM_COMPONENTS = 3; // vec3
-    glVertexAttribPointer(loc, NUM_COMPONENTS, GL_FLOAT, GL_FALSE, 0, positions);
-    glEnableVertexAttribArray(loc);
+    glVertexAttribPointer(positionLoc, NUM_COMPONENTS, GL_FLOAT, GL_FALSE, 0, positions);
+    glEnableVertexAttribArray(positionLoc);
 
     // indices
-    const size_t NUM_INDICES = 3;
-    uint16_t indices[NUM_INDICES] = {0, 1, 2};
+    const size_t NUM_INDICES = 6;
+    uint16_t indices[NUM_INDICES] = {0, 1, 2, 0, 2, 3};
     glDrawElements(GL_TRIANGLES, NUM_INDICES, GL_UNSIGNED_SHORT, indices);
 
     SDL_GL_SwapWindow(window);
 }
 
-
 int SDLCALL watch(void *userdata, SDL_Event* event) {
-
     if (event->type == SDL_APP_WILLENTERBACKGROUND) {
         quitting = true;
     }
-
     return 1;
 }
 
 int main(int argc, char *argv[]) {
-
     if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_EVENTS) != 0) {
         SDL_Log("Failed to initialize SDL: %s", SDL_GetError());
         return 1;
@@ -106,6 +102,25 @@ int main(int argc, char *argv[]) {
         exit(-1);
     } else {
         SDL_Log("Error link success\n");
+    }
+
+    // lookup and cache uniform and attrib locations.
+    colorLoc = program->GetUniformLocation("color");
+    if (colorLoc < 0) {
+        SDL_Log("Error finding color uniform\n");
+        exit(-1);
+    }
+
+    modelViewProjMatLoc = program->GetUniformLocation("modelViewProjMat");
+    if (modelViewProjMatLoc < 0) {
+        SDL_Log("Error finding modelViewProjMat uniform\n");
+        exit(-1);
+    }
+
+    positionLoc = program->GetAttribLocation("position");
+    if (positionLoc < 0) {
+        SDL_Log("Error finding position attribute\n");
+        exit(-1);
     }
 
     while (!quitting) {
