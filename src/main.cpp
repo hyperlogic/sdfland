@@ -10,6 +10,7 @@
 #include "render/texture.h"
 #include "render/program.h"
 #include "sdfscene.h"
+#include "abaci.h"
 
 static bool quitting = false;
 static float r = 0.0f;
@@ -23,12 +24,44 @@ static int WINDOW_WIDTH = 512;
 static Program* program = NULL;
 static int colorLoc = -1;
 static int modelViewProjMatLoc = -1;
+static int uvMatLoc = -1;
 static int sdfTextureLoc = -1;
 static int positionLoc = -1;
 static int uvLoc = -1;
 static Texture* texture = NULL;
 
 static SDFScene* scene = NULL;
+static float zoom = 1.0f;
+static Vector2f pan = Vector2f(0.0f, 0.0f);
+
+// transform p by a 2x2 matrix.
+// | m[0] m[2] | * | p[0] | = | r[0] |
+// | m[1] m[3] |   | p[1] |   | r[1] |
+static void xform_2x2(float *r, float *m, float *p) {
+    float temp[2];
+    temp[0] = m[0] * p[0] + m[2] * p[1];
+    temp[1] = m[1] * p[0] + m[3] * p[1];
+    r[0] = temp[0];
+    r[1] = temp[1];
+}
+
+// transpose a 2x2 matrix
+static void transpose_2x2(float *r, float *m) {
+    r[0] = m[0];
+    float temp = m[1];
+    r[1] = m[2];
+    r[2] = temp;
+    r[3] = m[3];
+}
+
+// invert a orthonormal 2x3 matrix.
+static void orthonormal_invert_2x3(float *r, float *m) {
+    transpose_2x2(r, m);
+    float trans[2] = {-m[4], -m[5]};
+    xform_2x2(trans, r, trans);
+    r[4] = trans[0];
+    r[5] = trans[1];
+}
 
 void render() {
     SDL_GL_MakeCurrent(window, gl_context);
@@ -47,8 +80,14 @@ void render() {
     glUniform4fv(colorLoc, 1, (float*)&color);
 
     // uniform mat4 modelViewProjMat;
-    Matrixf modelViewProjMat = Matrixf::Ortho(-0.0f, 1.0f, -0.0f, 1.0f, -10.0f, 10.0f);
+    Matrixf modelViewProjMat = Matrixf::Ortho(-1.0f, 1.0f, -1.0f, 1.0f, -10.0f, 10.0f);
     glUniformMatrix4fv(modelViewProjMatLoc, 1, GL_FALSE, (float*)&modelViewProjMat);
+
+    // uniform mat3 uvMat;
+    float uvMat[9] = { zoom, 0.0f, 0.0f,
+                       0.0f, zoom, 0.0f,
+                       pan.x, pan.y, 1.0f };
+    glUniformMatrix3fv(uvMatLoc, 1, GL_FALSE, uvMat);
 
     // uniform sampler2D sdfTexture;
     int unit = program->GetTextureUnit(sdfTextureLoc);
@@ -57,7 +96,7 @@ void render() {
 
     // attribute vec3 position;
     const size_t NUM_POSITIONS = 4;
-    Vector3f positions[NUM_POSITIONS] = { Vector3f(0.0f, 0.0f, 0.0f), Vector3f(1.0f, 0.0f, 0.0f), Vector3f(1.0, 1.0f, 0.0f), Vector3f(0.0f, 1.0f, 0.0f) };
+    Vector3f positions[NUM_POSITIONS] = { Vector3f(-1.0f, -1.0f, 0.0f), Vector3f(1.0f, -1.0f, 0.0f), Vector3f(1.0, 1.0f, 0.0f), Vector3f(-1.0f, 1.0f, 0.0f) };
     const size_t NUM_VEC3_COMPONENTS = 3; // vec3
     glVertexAttribPointer(positionLoc, NUM_VEC3_COMPONENTS, GL_FLOAT, GL_FALSE, 0, positions);
     glEnableVertexAttribArray(positionLoc);
@@ -133,6 +172,12 @@ int main(int argc, char *argv[]) {
         exit(-1);
     }
 
+    uvMatLoc = program->GetUniformLocation("uvMat");
+    if (uvMatLoc < 0) {
+        SDL_Log("Error finding uvMat uniform\n");
+        exit(-1);
+    }
+
     sdfTextureLoc = program->GetUniformLocation("sdfTexture");
     if (sdfTextureLoc < 0) {
         SDL_Log("Error finding sdfTextureLoc uniform\n");
@@ -158,15 +203,33 @@ int main(int argc, char *argv[]) {
     texture->SetMagFilter(GL_LINEAR);
     texture->SetSWrap(GL_CLAMP_TO_EDGE);
     texture->SetTWrap(GL_CLAMP_TO_EDGE);
-    texture->Create(scene->GetWidth(), scene->GetHeight());
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, scene->GetWidth(), scene->GetHeight(), 0, GL_RED, GL_FLOAT, scene->GetBuffer());
+    texture->Create(scene->GetSize(), scene->GetSize());
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, scene->GetSize(), scene->GetSize(), 0, GL_RED, GL_FLOAT, scene->GetBuffer());
 
-
+    const float MOUSE_SENSITIVITY = 0.005f;
+    bool grab = false;
     while (!quitting) {
         SDL_Event event;
         while (SDL_PollEvent(&event) ) {
             if (event.type == SDL_QUIT) {
                 quitting = true;
+            } else if (event.type == SDL_MOUSEWHEEL) {
+                if (event.wheel.y > 0) {
+                    // scroll up
+                    zoom *= 1.1f;
+                } else if(event.wheel.y < 0) {
+                    // scroll down
+                    zoom *= 0.9f;
+                }
+            } else if (event.type == SDL_MOUSEBUTTONDOWN) {
+                grab = true;
+            } else if (event.type == SDL_MOUSEBUTTONUP) {
+                grab = false;
+            } else if (event.type == SDL_MOUSEMOTION) {
+                if (grab) {
+                    pan.x -= MOUSE_SENSITIVITY * zoom * event.motion.xrel;
+                    pan.y += MOUSE_SENSITIVITY * zoom * event.motion.yrel;
+                }
             }
         }
 

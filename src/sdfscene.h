@@ -20,15 +20,11 @@ public:
     SDFScene();
     ~SDFScene();
 
-    int GetWidth() const { return _width; }
-    int GetHeight() const { return _height; }
-    const uint8_t* GetTextureBuffer() const { return _textureBuffer; }
+    int GetSize() const { return _size; }
     const float* GetBuffer() const { return _buffer; }
 
-    int _width;
-    int _height;
+    int _size;
     float* _buffer;
-    uint8_t* _textureBuffer;
     std::vector<Prim> _prims;
 };
 

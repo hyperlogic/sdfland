@@ -63,7 +63,7 @@ void RenderInit()
 {
     // print out gl version info
     bool dumpRenderInfo = true;
-    bool dumpExtensionInfo = true;
+    bool dumpExtensionInfo = false;
     if (dumpRenderInfo)
     {
         const GLubyte* version = glGetString(GL_VERSION);
@@ -82,6 +82,14 @@ void RenderInit()
         int maxTextureUnits;
         glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &maxTextureUnits);
         printf("    max texture units = %d\n", maxTextureUnits);
+
+        int maxTextureSize;
+        glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxTextureSize);
+        printf("    max texture size = %d\n", maxTextureSize);
+
+        int max3DTextureSize;
+        glGetIntegerv(GL_MAX_3D_TEXTURE_SIZE, &max3DTextureSize);
+        printf("    max 3D texture size = %d\n", max3DTextureSize);
 
 #ifndef GL_ES_VERSION_2_0
         int maxVertexUniforms, maxFragmentUniforms;

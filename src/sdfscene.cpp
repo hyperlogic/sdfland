@@ -18,6 +18,10 @@
 #define _USE_MATH_DEFINES // for C++
 #include <math.h>
 
+static const int TEXTURE_SIZE = 4096;
+static const float SAMPLES_PER_METER = 128;
+static const float MAX_DISTANCE = 1000.0f;
+
 struct Prim {
     int type; // 0 = sphere, 1 = box
     float m[6];
@@ -124,19 +128,19 @@ static MapResult map(const std::vector<Prim>& prims, float* p) {
         }
     }
     MapResult result;
-    result.dist = dist;
+    result.dist = std::min(MAX_DISTANCE, dist);
     result.nearest_prim = nearest_prim;
     return result;
 }
 
-static void draw_sdf_prims(const std::vector<Prim>& prims, int width, int height, float* buffer) {
+static void draw_sdf_prims(const std::vector<Prim>& prims, int size, float* buffer) {
     int x, y;
-    for (y = 0; y < height; y++) {
-        for (x = 0; x < width; x++) {
-            float *pixel = buffer + (y * width + x);
+    for (y = 0; y < size; y++) {
+        for (x = 0; x < size; x++) {
+            float *pixel = buffer + (y * size + x);
 
-            // convert from "viewport" coordinates into "world" space
-            float p[2] = {(float)x / (float)width, 1.0f - (float)y / (float)height};
+            // convert from "pixel" coordinates into "world" space
+            float p[2] = {(float)x / SAMPLES_PER_METER, 1.0f - (float)y / SAMPLES_PER_METER};
             MapResult r = map(prims, p);
             float dist = r.dist;
 
@@ -146,9 +150,8 @@ static void draw_sdf_prims(const std::vector<Prim>& prims, int width, int height
 }
 
 SDFScene::SDFScene() {
-    _width = 128;
-    _height = 128;
-    _buffer = new float[_width * _height];
+    _size = TEXTURE_SIZE;
+    _buffer = new float[_size * _size];
 
     // ground
     Prim prim;
@@ -269,22 +272,10 @@ SDFScene::SDFScene() {
     prim.r[0] = 0.09f;
     _prims.push_back(prim);
 
-    draw_sdf_prims(_prims, _width, _height, _buffer);
-
-    // convert _buffer to _textureBuffer
-    _textureBuffer = new uint8_t[_width * _height];
-    int x, y;
-    for (y = 0; y < _height; y++) {
-        for (x = 0; x < _width; x++) {
-            float *pixel = _buffer + (y * _width + x);
-            uint8_t *texel = _textureBuffer + (y * _width + x);
-            *texel = (uint8_t)(*pixel * 255.0f);
-        }
-    }
+    draw_sdf_prims(_prims, _size, _buffer);
 }
 
 SDFScene::~SDFScene() {
     // TODO: use a unique_ptr
     delete [] _buffer;
-    delete [] _textureBuffer;
 }
