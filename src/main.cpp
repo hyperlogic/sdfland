@@ -4,13 +4,14 @@
 #include <SDL2/SDL_opengl.h>
 
 #include <stdlib.h> //rand()
+#include <glm/glm.hpp>
 
 #include "render/render.h"
 #include "render/image.h"
 #include "render/texture.h"
 #include "render/program.h"
 #include "sdfscene.h"
-#include "abaci.h"
+
 
 static bool quitting = false;
 static float r = 0.0f;
@@ -31,36 +32,17 @@ static int uvLoc = -1;
 static Texture* texture = NULL;
 
 static SDFScene* scene = NULL;
+
 static float zoom = 1.0f;
-static Vector2f pan = Vector2f(0.0f, 0.0f);
+static glm::vec3 pan;
 
-// transform p by a 2x2 matrix.
-// | m[0] m[2] | * | p[0] | = | r[0] |
-// | m[1] m[3] |   | p[1] |   | r[1] |
-static void xform_2x2(float *r, float *m, float *p) {
-    float temp[2];
-    temp[0] = m[0] * p[0] + m[2] * p[1];
-    temp[1] = m[1] * p[0] + m[3] * p[1];
-    r[0] = temp[0];
-    r[1] = temp[1];
-}
+static glm::mat3 windowToWorld;
 
-// transpose a 2x2 matrix
-static void transpose_2x2(float *r, float *m) {
-    r[0] = m[0];
-    float temp = m[1];
-    r[1] = m[2];
-    r[2] = temp;
-    r[3] = m[3];
-}
-
-// invert a orthonormal 2x3 matrix.
-static void orthonormal_invert_2x3(float *r, float *m) {
-    transpose_2x2(r, m);
-    float trans[2] = {-m[4], -m[5]};
-    xform_2x2(trans, r, trans);
-    r[4] = trans[0];
-    r[5] = trans[1];
+void PrintMatrix(const char* name, const glm::mat3& m) {
+    SDL_Log("%s =\n", name);
+    SDL_Log("| %10.3f, %10.3f, %10.3f |\n", m[0].x, m[1].x, m[2].x);
+    SDL_Log("| %10.3f, %10.3f, %10.3f |\n", m[0].y, m[1].y, m[2].y);
+    SDL_Log("| %10.3f, %10.3f, %10.3f |\n", m[0].z, m[1].z, m[2].z);
 }
 
 void render() {
@@ -84,9 +66,9 @@ void render() {
     glUniformMatrix4fv(modelViewProjMatLoc, 1, GL_FALSE, (float*)&modelViewProjMat);
 
     // uniform mat3 uvMat;
-    float uvMat[9] = { zoom, 0.0f, 0.0f,
-                       0.0f, zoom, 0.0f,
-                       pan.x, pan.y, 1.0f };
+    float uvMat[9] = { 1.0f, 0.0f, 0.0f,
+                       0.0f, 1.0f, 0.0f,
+                       0.0f, 0.0f, 1.0f };
     glUniformMatrix3fv(uvMatLoc, 1, GL_FALSE, uvMat);
 
     // uniform sampler2D sdfTexture;
@@ -129,7 +111,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    window = SDL_CreateWindow("title", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+    window = SDL_CreateWindow("sdfland", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
                               WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_OPENGL);
 
     gl_context = SDL_GL_CreateContext(window);
@@ -223,6 +205,30 @@ int main(int argc, char *argv[]) {
                 }
             } else if (event.type == SDL_MOUSEBUTTONDOWN) {
                 grab = true;
+                glm::vec2 mousePos(event.button.x, WINDOW_HEIGHT - event.button.y);
+
+                SDL_Log("mousePos = %.5f, %.5f\n", mousePos.x, mousePos.y);
+
+                float scale = ((float)scene->GetSize() / (float)WINDOW_WIDTH) / (float)scene->GetSamplesPerMeter();
+                float halfSize = (float)scene->GetSize() / 2.0f;
+                float worldSize = (float)scene->GetSize() / scene->GetSamplesPerMeter();
+                windowToWorld = glm::mat3(glm::vec3(scale, 0.0f, 0.0f),
+                                          glm::vec3(0.0f, scale, 0.0f),
+                                          glm::vec3(-worldSize / 2.0f, -worldSize / 2.0f, 1.0f));
+                PrintMatrix("windowToWorld", windowToWorld);
+
+                float radius = 0.2f;
+
+                if (event.button.button == SDL_BUTTON_LEFT) {
+                    scene->AddCircle(windowToWorld * glm::vec3(mousePos, 1.0f), radius);
+                } else {
+                    scene->RemCircle(windowToWorld * glm::vec3(mousePos, 1.0f), radius);
+                }
+
+                // re-load texture
+                texture->Apply(0);
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, scene->GetSize(), scene->GetSize(), 0, GL_RED, GL_FLOAT, scene->GetBuffer());
+
             } else if (event.type == SDL_MOUSEBUTTONUP) {
                 grab = false;
             } else if (event.type == SDL_MOUSEMOTION) {

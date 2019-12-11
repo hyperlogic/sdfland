@@ -12,6 +12,7 @@
 #define hifi_SDFScene_h
 
 #include <vector>
+#include <glm/glm.hpp>
 
 struct Prim;
 
@@ -22,6 +23,11 @@ public:
 
     int GetSize() const { return _size; }
     const float* GetBuffer() const { return _buffer; }
+
+    void AddCircle(const glm::vec2& pos, float radius);
+    void RemCircle(const glm::vec2& pos, float radius);
+
+    int GetSamplesPerMeter() const;
 
     int _size;
     float* _buffer;
