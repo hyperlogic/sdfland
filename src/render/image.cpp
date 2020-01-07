@@ -480,7 +480,7 @@ static int Index(int x, int y, int pixelSize, int width, int height, unsigned in
 
 void Image::GenerateMipMaps(FilterType type, unsigned int flags)
 {
-    if (m_numMips > 1 or m_numMips == 0)
+    if (m_numMips > 1 || m_numMips == 0)
         return;
 
     // allocate an array of Buffers that are large enough to hold all the mip levels.
