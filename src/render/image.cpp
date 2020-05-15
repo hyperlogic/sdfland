@@ -5,6 +5,10 @@ extern "C" {
 #include "png.h"
 }
 
+#ifndef _WIN32
+#include <string.h>
+#endif
+
 static int s_pixelFormatToPixelSize[Texture::NumPixelFormats] = {
     1, 2, 3, 4, 3, 4, 2
 };
@@ -49,9 +53,12 @@ Image::~Image()
 
 bool Image::Load(const char* filename)
 {
+#ifdef _WIN32
     FILE *fp = NULL;
     fopen_s(&fp, filename, "rb");
-    //FILE *fp = fopen(filename, "rb");
+#else
+    FILE *fp = fopen(filename, "rb");
+#endif
     if (!fp)
     {
         fprintf(stderr, "Error: Failed to load texture \"%s\"\n", filename);
@@ -162,9 +169,12 @@ bool Image::Load(const char* filename)
 
 bool Image::Save(const char* filename) const
 {
+#ifdef _WIN32
     FILE *fp = NULL;
     fopen_s(&fp, filename, "wb");
-    //FILE *fp = fopen(filename, "wb");
+#else
+    FILE *fp = fopen(filename, "wb");
+#endif
     if (!fp)
     {
         fprintf(stderr, "Error: Failed to save texture \"%s\"\n", filename);

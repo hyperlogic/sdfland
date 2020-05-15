@@ -17,9 +17,12 @@ enum LoadFileToMemoryResult { CouldNotOpenFile = -1, CouldNotReadFile = -2 };
 static int _LoadFileToMemory(const char *filename, char **result)
 {
     int size = 0;
+#ifdef _WIN32
     FILE *f = NULL;
     fopen_s(&f, filename, "rb");
-    //FILE *f = fopen(filename, "rb");
+#else
+    FILE *f = fopen(filename, "rb");
+#endif
     if (f == NULL)
     {
         *result = NULL;

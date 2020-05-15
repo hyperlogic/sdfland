@@ -120,9 +120,12 @@ bool FileExists(const std::string& filename)
 {
     //printf("searching for %s\n", filename.c_str());
 
+#ifdef _WIN32
     FILE* fp = NULL;
     fopen_s(&fp, filename.c_str(), "r");
-    //FILE* fp = fopen(filename.c_str(), "r");
+#else
+    FILE* fp = fopen(filename.c_str(), "r");
+#endif
     if (fp)
     {
         fclose(fp);

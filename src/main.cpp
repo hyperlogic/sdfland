@@ -134,8 +134,8 @@ int main(int argc, char *argv[]) {
     RenderInit();
 
     program = new Program();
-    program->AddSourceFile(GL_VERTEX_SHADER, "C:\\msys64\\home\\ajthy\\code\\sdfland\\src\\shader\\sdf2d_vert.glsl");
-    program->AddSourceFile(GL_FRAGMENT_SHADER, "C:\\msys64\\home\\ajthy\\code\\sdfland\\src\\shader\\sdf2d_frag.glsl");
+    program->AddSourceFile(GL_VERTEX_SHADER, "shader/sdf2d_vert.glsl");
+    program->AddSourceFile(GL_FRAGMENT_SHADER, "shader/sdf2d_frag.glsl");
     if (!program->Link()) {
         SDL_Log("Error link failure: %s\n", glewGetErrorString(err));
         exit(-1);

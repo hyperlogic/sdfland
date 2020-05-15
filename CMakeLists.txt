@@ -16,10 +16,12 @@ if(WIN32)
 else()
     find_package(SDL2 REQUIRED)
     find_package(GLEW REQUIRED)
-    find_package(libpng REQUIRED)
+    find_package(PNG REQUIRED)
+    find_package(glm REQUIRED)
 endif()
 
-find_package(OPENGL REQUIRED)
+find_package(OpenGL REQUIRED)
+
 
 add_executable(${PROJECT_NAME} src/main.cpp src/sdfscene.cpp
     src/render/image.cpp
@@ -31,4 +33,8 @@ if(WIN32)
     set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS /SUBSYSTEM:WINDOWS)
 endif()
 
-target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARIES} ${GLEW_LIBRARIES} ${PNG_LIBRARIES} opengl32)
+target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARIES} ${GLEW_LIBRARIES} ${PNG_LIBRARIES} ${OPENGL_LIBRARIES})
+
+# copy files
+configure_file("src/shader/sdf2d_vert.glsl" "shader/sdf2d_vert.glsl" COPYONLY)
+configure_file("src/shader/sdf2d_frag.glsl" "shader/sdf2d_frag.glsl" COPYONLY)
